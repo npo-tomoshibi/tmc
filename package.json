@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "lint": "node scripts/verify.mjs",
+    "typecheck": "node --check assets/js/venues.js && node --check assets/js/app.js",
+    "build": "node scripts/verify.mjs"
+  }
+}

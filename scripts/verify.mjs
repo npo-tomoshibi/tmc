@@ -1,0 +1,145 @@
+import { access, readFile } from "node:fs/promises";
+
+const requiredFiles = [
+  "index.html",
+  "tokushima/index.html",
+  "hyogo/index.html",
+  "osaka/index.html",
+  "kyoto/index.html",
+  "shiga/index.html",
+  "nara/index.html",
+  "wakayama/index.html",
+  "assets/css/style.css",
+  "assets/js/venues.js",
+  "assets/js/app.js",
+  "assets/images/tmc_yoko.svg",
+  "assets/images/tmc_tate.svg",
+  "assets/images/design.svg",
+  "assets/images/venues/logo-tokushima.svg",
+  "assets/images/venues/logo-hyogo.svg",
+  "assets/images/venues/logo-osaka.svg",
+  "assets/images/venues/logo-kyoto.svg",
+  "assets/images/venues/logo-shiga.svg",
+  "assets/images/venues/logo-nara.svg",
+  "assets/images/venues/logo-wakayama.svg",
+  "assets/images/venues/banner-tokushima.svg",
+  "assets/images/venues/banner-hyogo.svg",
+  "assets/images/venues/banner-osaka.svg",
+  "assets/images/venues/banner-kyoto.svg",
+  "assets/images/venues/banner-shiga.svg",
+  "assets/images/venues/banner-nara.svg",
+  "assets/images/venues/banner-wakayama.svg",
+];
+
+for (const file of requiredFiles) {
+  await access(file);
+}
+
+const html = await readFile("index.html", "utf8");
+const css = await readFile("assets/css/style.css", "utf8");
+const venues = await readFile("assets/js/venues.js", "utf8");
+
+const requiredSections = [
+  "ABOUT",
+  "SCHEDULE",
+  "MAP",
+  "PROGRAM",
+  "FOR PARENTS",
+  "MESSAGE",
+  "ATTENTION",
+  "FAQ",
+  "ORGANIZER",
+  "SHARE",
+];
+
+for (const label of requiredSections) {
+  if (!html.includes(label)) {
+    throw new Error(`Missing section label: ${label}`);
+  }
+}
+
+const venuesByDate = [
+  ["tokushima", "2026-08-08", "30名", "https://tmc-tokushima.peatix.com"],
+  ["hyogo", "2026-08-09", "60名", "https://tmc-hyogo.peatix.com"],
+  ["kyoto", "2026-08-11", "40名", "https://tmc-kyoto.peatix.com"],
+  ["shiga", "2026-08-12", "30名", "https://tmc-shiga.peatix.com"],
+  ["nara", "2026-08-13", "30名", "https://tmc-nara.peatix.com"],
+  ["wakayama", "2026-08-15", "20名", "https://tmc-wakayama.peatix.com"],
+  ["osaka", "2026-08-16", "60名", "https://tmc-osaka.peatix.com"],
+];
+
+let previousVenueIndex = -1;
+for (const [slug, date, capacityLabel, peatixUrl] of venuesByDate) {
+  if (!venues.includes(`slug: "${slug}"`)) {
+    throw new Error(`Missing venue data for ${slug}`);
+  }
+  const currentVenueIndex = venues.indexOf(`slug: "${slug}"`);
+  if (currentVenueIndex <= previousVenueIndex) {
+    throw new Error(`Venue data must be in event-date order. Check ${slug}.`);
+  }
+  previousVenueIndex = currentVenueIndex;
+  for (const snippet of [
+    `date: "${date}"`,
+    `capacityLabel: "${capacityLabel}"`,
+    `status: "open"`,
+    `statusLabel: "申込受付中"`,
+    `peatixUrl: "${peatixUrl}"`,
+  ]) {
+    if (!venues.includes(snippet)) {
+      throw new Error(`Missing required venue field for ${slug}: ${snippet}`);
+    }
+  }
+  if (!venues.includes(`logo: "/assets/images/venues/logo-${slug}.svg"`)) {
+    throw new Error(`Missing venue logo path for ${slug}`);
+  }
+  if (!venues.includes(`banner: "/assets/images/venues/banner-${slug}.svg"`)) {
+    throw new Error(`Missing venue banner path for ${slug}`);
+  }
+  const page = await readFile(`${slug}/index.html`, "utf8");
+  if (!page.includes(`data-venue="${slug}"`)) {
+    throw new Error(`Venue page is not wired for ${slug}`);
+  }
+}
+
+if (!venues.includes("function getVenuesByDate()") || !venues.includes("function getOtherVenuesByDate(currentSlug)")) {
+  throw new Error("Venue date sorting helpers are required.");
+}
+
+const app = await readFile("assets/js/app.js", "utf8");
+if (!app.includes("getVenuesByDate()") || !app.includes("getOtherVenuesByDate(currentSlug)")) {
+  throw new Error("Venue list rendering must use date-sorted helpers.");
+}
+
+if (!html.includes('<h1 class="sr-only">TOMOSHIBI MAKERS CARAVAN</h1>')) {
+  throw new Error("Hero must include sr-only h1.");
+}
+
+if (!html.includes("caravan-map__image") || !html.includes("./assets/images/design.svg")) {
+  throw new Error("Caravan map must use design.svg as the base image.");
+}
+
+if (!css.includes("--site-max-width: 468px")) {
+  throw new Error("Site shell must use the smartphone-width layout.");
+}
+
+if (!html.includes("family=Oswald:wght@400;500;600;700") || !html.includes("Zen+Kaku+Gothic+New")) {
+  throw new Error("Google Fonts for Oswald and Zen Kaku Gothic New must be loaded.");
+}
+
+if (!css.includes('--font-ja: "Zen Kaku Gothic New"') || !css.includes('--font-en: "Oswald"')) {
+  throw new Error("Font variables must define Zen Kaku Gothic New and Oswald.");
+}
+
+if (css.includes("backdrop-filter") || css.includes("blur(")) {
+  throw new Error("Matte design must not use blur or backdrop-filter.");
+}
+
+if (css.includes("border-radius: 999px")) {
+  throw new Error("Avoid fully pill-shaped border-radius in the cleaned-up design.");
+}
+
+if (!css.includes("box-shadow: none")) {
+  throw new Error("Matte design should remove card/button shadows.");
+}
+
+console.log("TMC static site verification passed.");
