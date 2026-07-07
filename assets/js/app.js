@@ -65,19 +65,6 @@
     return `<span class="${className} is-disabled" aria-disabled="true">申込準備中</span>`;
   }
 
-  function renderVenueLogo(venue, className = "venue-card__logo") {
-    const fallbackMarkup = `<span class="venue-logo-fallback" style="--venue-color: ${venue.color}">${venue.label}</span>`;
-    if (!venue.logo) {
-      return `<div class="${className}">${fallbackMarkup}</div>`;
-    }
-    return `
-      <div class="${className}">
-        <img src="${venueAssetPath(venue.logo)}" alt="${venue.label}会場" onerror="this.hidden=true;this.nextElementSibling.hidden=false">
-        <span class="venue-logo-fallback" style="--venue-color: ${venue.color}" hidden>${venue.label}</span>
-      </div>
-    `;
-  }
-
   function renderVenueShape(venue, className) {
     if (!venue.shape) return "";
     return `

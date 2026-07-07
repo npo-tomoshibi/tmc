@@ -15,13 +15,6 @@ const requiredFiles = [
   "assets/images/tmc_yoko.svg",
   "assets/images/tmc_tate.svg",
   "assets/images/design.svg",
-  "assets/images/venues/logo-tokushima.svg",
-  "assets/images/venues/logo-hyogo.svg",
-  "assets/images/venues/logo-osaka.svg",
-  "assets/images/venues/logo-kyoto.svg",
-  "assets/images/venues/logo-shiga.svg",
-  "assets/images/venues/logo-nara.svg",
-  "assets/images/venues/logo-wakayama.svg",
   "assets/images/venues/banner-tokushima.svg",
   "assets/images/venues/banner-hyogo.svg",
   "assets/images/venues/banner-osaka.svg",
@@ -88,9 +81,6 @@ for (const [slug, date, capacityLabel, peatixUrl] of venuesByDate) {
     if (!venues.includes(snippet)) {
       throw new Error(`Missing required venue field for ${slug}: ${snippet}`);
     }
-  }
-  if (!venues.includes(`logo: "/assets/images/venues/logo-${slug}.svg"`)) {
-    throw new Error(`Missing venue logo path for ${slug}`);
   }
   if (!venues.includes(`banner: "/assets/images/venues/banner-${slug}.svg"`)) {
     throw new Error(`Missing venue banner path for ${slug}`);

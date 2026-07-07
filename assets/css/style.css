@@ -443,34 +443,6 @@ a {
   height: auto;
 }
 
-.venue-card__logo {
-  display: flex;
-  min-height: 64px;
-  align-items: center;
-  justify-content: flex-start;
-  margin-bottom: 16px;
-}
-
-.venue-card__logo img {
-  width: auto;
-  max-width: 180px;
-  max-height: 64px;
-}
-
-.venue-logo-fallback {
-  display: inline-flex;
-  min-width: 120px;
-  min-height: 48px;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 16px;
-  border: 2px solid var(--venue-color);
-  border-radius: 12px;
-  color: var(--venue-color);
-  background: #ffffff;
-  font-weight: 700;
-}
-
 .venue-card__banner {
   width: 100%;
   margin-bottom: 18px;
