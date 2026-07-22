@@ -3,7 +3,9 @@
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
   const fallback = (value) => value || "後日公開";
   const currentSlug = document.body.dataset.venue || "";
-  const rootHref = currentSlug ? "../" : "./";
+  const isCampaignPage = document.body.dataset.page === "campaign";
+  const isSubPage = Boolean(currentSlug) || isCampaignPage;
+  const rootHref = isSubPage ? "../" : "./";
 
   function assetPath(path) {
     return `${rootHref}${path}`;
@@ -14,9 +16,97 @@
     return assetPath(path.replace(/^\/+/, ""));
   }
 
+  function renderMobileChrome() {
+    const header = $(".site-header");
+    if (!header) return;
+
+    const topPrefix = isSubPage ? "../" : "";
+    const campaignHref = isCampaignPage
+      ? "./"
+      : currentSlug
+        ? "../campaign/"
+        : "./campaign/";
+    const campaignCurrent = isCampaignPage ? ' class="is-current" aria-current="page"' : "";
+    const mobileVenueLinks = getVenuesByDate().map((venue) => {
+      const isCancelled = venue.status === VENUE_STATUS.CANCELLED;
+      const classes = [venue.slug === currentSlug ? "is-current" : "", isCancelled ? "is-cancelled" : ""].filter(Boolean).join(" ");
+      const classAttribute = classes ? ` class="${classes}"` : "";
+      const status = isCancelled ? "<small>CANCELLED</small>" : "";
+      return `<a href="${isSubPage ? venue.pageHref : venue.href}"${classAttribute}>${venue.area.toUpperCase()} <span>${venue.date.replaceAll("-", ".")}</span>${status}</a>`;
+    }).join("");
+
+    header.innerHTML = `
+      <a href="${rootHref}" class="site-header__logo" aria-label="TOMOSHIBI MAKERS CARAVAN トップへ">
+        <img src="${assetPath("assets/images/tmc_yoko.svg")}" alt="TOMOSHIBI MAKERS CARAVAN">
+      </a>
+      <button
+        type="button"
+        class="site-header__menu-button"
+        aria-expanded="false"
+        aria-controls="mobile-navigation"
+        aria-label="メニューを開く"
+      >
+        <span></span>
+        <span></span>
+      </button>
+    `;
+
+    let mobileNav = $("#mobile-navigation");
+    if (!mobileNav) {
+      header.insertAdjacentHTML(
+        "afterend",
+        '<nav class="mobile-nav" id="mobile-navigation" aria-label="サイト内ナビゲーション"></nav>',
+      );
+      mobileNav = $("#mobile-navigation");
+    }
+
+    mobileNav.innerHTML = `
+      <a href="${topPrefix}#top">TOP</a>
+      <a href="${topPrefix}#about">ABOUT</a>
+      <a href="${topPrefix}#schedule">SCHEDULE</a>
+      <a href="${topPrefix}#map">MAP</a>
+      <a href="${topPrefix}#program">PROGRAM</a>
+      <a href="${topPrefix}#parents">PARENTS</a>
+      <a href="${topPrefix}#attention">ATTENTION</a>
+      <a href="${topPrefix}#faq">FAQ</a>
+      <a href="${topPrefix}#organizer">ORGANIZER</a>
+      <a href="${campaignHref}"${campaignCurrent}>CAMPAIGN</a>
+      <div class="mobile-nav__venues" aria-label="会場一覧">
+        ${mobileVenueLinks}
+      </div>
+    `;
+
+    const menuButton = $(".site-header__menu-button", header);
+    const setMenuState = (isOpen) => {
+      menuButton.setAttribute("aria-expanded", String(isOpen));
+      menuButton.setAttribute("aria-label", isOpen ? "メニューを閉じる" : "メニューを開く");
+      mobileNav.classList.toggle("is-open", isOpen);
+      document.body.classList.toggle("is-mobile-nav-open", isOpen);
+
+      if (window.tmcLenis) {
+        if (isOpen) window.tmcLenis.stop();
+        else window.tmcLenis.start();
+      }
+    };
+
+    menuButton.addEventListener("click", () => {
+      setMenuState(menuButton.getAttribute("aria-expanded") !== "true");
+    });
+    $$("a", mobileNav).forEach((link) => link.addEventListener("click", () => setMenuState(false)));
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && menuButton.getAttribute("aria-expanded") === "true") {
+        setMenuState(false);
+        menuButton.focus();
+      }
+    });
+    window.matchMedia("(min-width: 960px)").addEventListener("change", (event) => {
+      if (event.matches) setMenuState(false);
+    });
+  }
+
   function renderDesktopChrome() {
     if ($(".desktop-chrome")) return;
-    const sectionLinks = [
+    const topSectionLinks = [
       ["TOP", "#top"],
       ["ABOUT", "#about"],
       ["SCHEDULE", "#schedule"],
@@ -27,14 +117,21 @@
       ["FAQ", "#faq"],
       ["ORGANIZER", "#organizer"],
     ];
-    const pagePrefix = currentSlug ? "../" : "";
+    const pagePrefix = isSubPage ? "../" : "";
     const venueLinks = getVenuesByDate().map((venue) => {
-      const href = currentSlug ? venue.pageHref : venue.href;
-      const currentClass = venue.slug === currentSlug ? ' class="is-current"' : "";
+      const href = isSubPage ? venue.pageHref : venue.href;
+      const isCancelled = venue.status === VENUE_STATUS.CANCELLED;
+      const classes = [venue.slug === currentSlug ? "is-current" : "", isCancelled ? "is-cancelled" : ""].filter(Boolean).join(" ");
+      const classAttribute = classes ? ` class="${classes}"` : "";
       const dateText = venue.date.replaceAll("-", ".");
-      return `<a href="${href}"${currentClass} style="--venue-color: var(--tmc-${venue.slug});">${venue.area.toUpperCase()} <span>${dateText}</span></a>`;
+      const status = isCancelled ? "<small>CANCELLED</small>" : "";
+      return `<a href="${href}"${classAttribute} style="--venue-color: var(--tmc-${venue.slug});">${venue.area.toUpperCase()} <span>${dateText}</span>${status}</a>`;
     }).join("");
-    const navLinks = sectionLinks.map(([label, hash]) => `<a href="${pagePrefix}${hash}">${label}</a>`).join("");
+    const navLinks = topSectionLinks.map(([label, hash]) => `<a href="${pagePrefix}${hash}">${label}</a>`).join("");
+    const campaignHref = isCampaignPage ? "./" : currentSlug ? "../campaign/" : "./campaign/";
+    const campaignClass = isCampaignPage ? "desktop-nav__campaign is-current" : "desktop-nav__campaign";
+    const campaignAria = isCampaignPage ? ' aria-current="page"' : "";
+    const campaignLink = `<a href="${campaignHref}" class="${campaignClass}"${campaignAria}>CAMPAIGN</a>`;
 
     document.body.insertAdjacentHTML(
       "afterbegin",
@@ -46,8 +143,9 @@
         </div>
 
         <div class="desktop-chrome desktop-chrome--right">
-          <nav class="desktop-nav" aria-label="ページ内ナビゲーション">
+          <nav class="desktop-nav" aria-label="サイト内ナビゲーション">
             ${navLinks}
+            ${campaignLink}
             <a href="${rootHref}" class="desktop-nav__home">HOME</a>
             <div class="desktop-nav__venues" aria-label="会場一覧">
               ${venueLinks}
@@ -59,6 +157,9 @@
   }
 
   function entryButton(venue, className = "button button--primary", label = "申し込む") {
+    if (venue.status === VENUE_STATUS.CANCELLED) {
+      return `<span class="${className} sticky-cta__button--disabled" aria-disabled="true">開催中止</span>`;
+    }
     if (venue.peatixUrl) {
       return `<a class="${className}" href="${venue.peatixUrl}" target="_blank" rel="noopener noreferrer">${label}</a>`;
     }
@@ -92,27 +193,66 @@
   function renderTopSchedule() {
     const container = $("#venueCards");
     if (!container) return;
-    const venues = getVenuesByDate();
-    container.innerHTML = venues.map(
-      (venue) => `
-        <article class="venue-card reveal" style="--venue-color: ${venue.color}">
-          ${renderVenueShape(venue, "venue-card__shape")}
-          ${renderVenueBanner(venue)}
-          <h3>${venue.label}会場</h3>
-          <p class="venue-card__venue">${venue.venueShortName || venue.venueName}</p>
-          <dl class="mini-meta">
-            <div><dt>日時</dt><dd>${fallback(venue.dateLabel)}</dd></div>
-            <div><dt>対象</dt><dd>${fallback(venue.target)}</dd></div>
-            <div><dt>定員</dt><dd>${fallback(venue.capacityLabel)}</dd></div>
-            <div><dt>状態</dt><dd>${venue.statusLabel}</dd></div>
-          </dl>
-          <div class="venue-card__actions">
+
+    const renderCard = (venue) => {
+      const isCancelled = venue.status === VENUE_STATUS.CANCELLED;
+      const actions = isCancelled
+        ? `<a class="button button--secondary button--compact" href="${venue.noticeUrl}" target="_blank" rel="noopener noreferrer">開催中止について</a>`
+        : `
             <a class="button button--secondary button--compact" href="${venue.href}">詳細を見る</a>
             ${entryButton(venue, "button button--primary button--compact")}
+          `;
+      return `
+        <article class="venue-card${isCancelled ? " is-cancelled" : ""} reveal" style="--venue-color: ${venue.color}">
+          ${renderVenueShape(venue, "venue-card__shape")}
+          ${renderVenueBanner(venue)}
+          <div class="venue-card__content">
+            ${isCancelled ? '<span class="venue-card__cancelled-label">開催中止</span>' : ""}
+            <h3>${venue.label}会場</h3>
+            <p class="venue-card__venue">${venue.venueShortName || venue.venueName}</p>
+            <dl class="mini-meta">
+              <div><dt>日時</dt><dd>${fallback(venue.dateLabel)}</dd></div>
+              <div><dt>対象</dt><dd>${fallback(venue.target)}</dd></div>
+              <div><dt>定員</dt><dd>${fallback(venue.capacityLabel)}</dd></div>
+              <div><dt>状態</dt><dd>${venue.statusLabel}</dd></div>
+            </dl>
+          </div>
+          <div class="venue-card__actions">
+            ${actions}
           </div>
         </article>
-      `,
-    ).join("");
+      `;
+    };
+
+    const activeCards = getActiveVenuesByDate().map(renderCard).join("");
+    const cancelledCards = getCancelledVenuesByDate().map(renderCard).join("");
+    container.innerHTML = `
+      <section class="venue-group" aria-labelledby="active-venues-title">
+        <h3 class="venue-group__title" id="active-venues-title">開催会場</h3>
+        <div class="venue-group__list">${activeCards}</div>
+      </section>
+      <section class="venue-group venue-group--cancelled" aria-labelledby="cancelled-venues-title">
+        <h3 class="venue-group__title" id="cancelled-venues-title">開催中止となった会場</h3>
+        <div class="venue-group__list">${cancelledCards}</div>
+      </section>
+    `;
+  }
+
+  function renderCampaignVenues() {
+    const container = $("#campaignVenueList");
+    if (!container) return;
+
+    const campaignVenues = getCampaignVenuesByDate();
+    container.innerHTML = campaignVenues.map((venue) => `
+      <article class="campaign-venue reveal" style="--venue-color: ${venue.color}">
+        ${renderVenueBanner(venue, "campaign-venue__banner")}
+        <div class="campaign-venue__body">
+          <time class="campaign-venue__date" datetime="${venue.date}">${venue.date.replaceAll("-", ".")}</time>
+          <h3 class="campaign-venue__name">${venue.venueName}</h3>
+          ${entryButton(venue, "button button--primary campaign-venue__button", "この会場に申し込む")}
+        </div>
+      </article>
+    `).join("");
   }
 
   function formatDateForMapList(dateString) {
@@ -124,18 +264,23 @@
     const mapList = $("[data-map-list]");
     if (!mapList) return;
     mapList.innerHTML = getVenuesByDate().map(
-      (venue) => `
+      (venue) => {
+        const isCancelled = venue.status === VENUE_STATUS.CANCELLED;
+        return `
         <a
           href="${venue.href}"
-          class="map-list__item"
+          class="map-list__item${isCancelled ? " is-cancelled" : ""}"
           style="--venue-color: ${venue.color};"
+          aria-label="${venue.label}会場${isCancelled ? "・開催中止" : ""}"
         >
           <span class="map-list__dot"></span>
           <span class="map-list__name">${venue.label}</span>
           <span class="map-list__date">${formatDateForMapList(venue.date)}</span>
+          <span class="map-list__status">${venue.statusLabel}</span>
           <span class="map-list__arrow" aria-hidden="true">↗</span>
         </a>
-      `,
+      `;
+      },
     ).join("");
   }
 
@@ -145,17 +290,20 @@
     map.insertAdjacentHTML(
       "beforeend",
       getVenuesByDate().map(
-        (venue) => `
+        (venue) => {
+          const isCancelled = venue.status === VENUE_STATUS.CANCELLED;
+          return `
           <a
             href="${venue.href}"
-            class="caravan-map__pin"
+            class="caravan-map__pin${isCancelled ? " is-cancelled" : ""}"
             style="--x: ${venue.mapX}; --y: ${venue.mapY}; --venue-color: ${venue.color};"
-            aria-label="${venue.label}会場の詳細を見る"
+            aria-label="${venue.label}会場${isCancelled ? "・開催中止" : "の詳細を見る"}"
           >
             <span class="caravan-map__dot"></span>
-            <span class="caravan-map__label">${venue.label}</span>
+            <span class="caravan-map__label">${venue.label}${isCancelled ? "・中止" : ""}</span>
           </a>
-        `,
+        `;
+        },
       ).join(""),
     );
   }
@@ -228,11 +376,25 @@
             </div>
           `).join("")}
         </div>
-        <div class="venue-hero__actions">
-          ${entryButton(venue, "button button--primary", "この会場に申し込む")}
-        </div>
+        ${venue.status === VENUE_STATUS.CANCELLED ? "" : `
+          <div class="venue-hero__actions">
+            ${entryButton(venue, "button button--primary", "この会場に申し込む")}
+          </div>
+        `}
       </div>
       ${renderVenueShape(venue, "venue-hero__shape")}
+    `;
+  }
+
+  function renderVenueCancellationNotice(venue) {
+    if (venue.status !== VENUE_STATUS.CANCELLED) return "";
+    return `
+      <section class="venue-cancelled-notice" aria-labelledby="cancelled-title">
+        <p class="venue-cancelled-notice__label">CANCELLED</p>
+        <h2 id="cancelled-title">この会場は開催中止となりました</h2>
+        <p>参加をご検討いただいていた皆さまには、心よりお詫び申し上げます。詳細はNPO法人燈からのお知らせをご確認ください。</p>
+        <a href="${venue.noticeUrl}" target="_blank" rel="noopener noreferrer">開催中止について詳しく見る</a>
+      </section>
     `;
   }
 
@@ -240,12 +402,17 @@
     if (!currentSlug) return;
     const venue = TMC_VENUES.find((item) => item.slug === currentSlug);
     if (!venue) return;
+    const isCancelled = venue.status === VENUE_STATUS.CANCELLED;
 
     document.documentElement.style.setProperty("--current-venue-color", venue.color);
+    document.body.classList.toggle("is-cancelled-venue", isCancelled);
     const hero = $(".venue-hero");
     if (hero) {
       hero.style.setProperty("--venue-color", venue.color);
       hero.innerHTML = renderVenueHero(venue);
+      if (isCancelled && !$(".venue-cancelled-notice")) {
+        hero.insertAdjacentHTML("afterend", renderVenueCancellationNotice(venue));
+      }
     }
     $$(".js-venue-status").forEach((el) => (el.textContent = venue.statusLabel));
 
@@ -283,20 +450,36 @@
     if (attention) attention.innerHTML = renderListOrPending(venue.attention);
 
     const cta = $("#venueEntry");
-    if (cta) cta.innerHTML = entryButton(venue, "button button--primary", "この会場に申し込む");
+    if (cta) {
+      cta.innerHTML = isCancelled
+        ? `<p class="venue-entry-cancelled">この会場の申込受付は行っていません。</p><a class="button button--secondary" href="${venue.noticeUrl}" target="_blank" rel="noopener noreferrer">開催中止について詳しく見る</a>`
+        : entryButton(venue, "button button--primary", "この会場に申し込む");
+    }
 
     const sticky = $("#venueStickyEntry");
-    if (sticky) sticky.innerHTML = entryButton(venue, "button button--primary button--compact sticky-cta__button sticky-cta__button--entry");
+    if (sticky) {
+      sticky.innerHTML = isCancelled
+        ? '<span class="sticky-cta__button sticky-cta__button--disabled" aria-disabled="true">開催中止</span>'
+        : entryButton(venue, "button button--primary button--compact sticky-cta__button sticky-cta__button--entry");
+    }
 
     const others = $("#otherVenues");
     if (others) {
-      others.innerHTML = getOtherVenuesByDate(currentSlug).map((item) => {
-        const currentClass = item.slug === currentSlug ? " is-current" : "";
+      const renderOtherLink = (item) => {
+        const cancelledClass = item.status === VENUE_STATUS.CANCELLED ? " is-cancelled" : "";
         const content = item.banner
           ? `<span class="other-venues__banner"><img src="${venueAssetPath(item.banner)}" alt="${item.area.toUpperCase()}"></span>`
           : `<b>${item.label}</b>`;
-        return `<a class="other-venues__link${currentClass}" href="${item.pageHref}" style="--venue-color: ${item.color}">${content}</a>`;
-      }).join("");
+        const status = item.status === VENUE_STATUS.CANCELLED ? "<small>開催中止</small>" : "";
+        return `<a class="other-venues__link${cancelledClass}" href="${item.pageHref}" style="--venue-color: ${item.color}">${content}${status}</a>`;
+      };
+      const otherVenues = getOtherVenuesByDate(currentSlug);
+      const activeLinks = otherVenues.filter((item) => item.status === VENUE_STATUS.OPEN).map(renderOtherLink).join("");
+      const cancelledLinks = otherVenues.filter((item) => item.status === VENUE_STATUS.CANCELLED).map(renderOtherLink).join("");
+      others.innerHTML = `
+        ${activeLinks ? `<div class="other-venues__group"><h3>開催会場</h3>${activeLinks}</div>` : ""}
+        ${cancelledLinks ? `<div class="other-venues__group other-venues__group--cancelled"><h3>開催中止となった会場</h3>${cancelledLinks}</div>` : ""}
+      `;
     }
   }
 
@@ -393,8 +576,10 @@
     window.tmcLenis = lenis;
   }
 
+  renderMobileChrome();
   renderDesktopChrome();
   renderTopSchedule();
+  renderCampaignVenues();
   renderMapList();
   renderMapPins();
   renderProgram();

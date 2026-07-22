@@ -1,3 +1,13 @@
+const VENUE_STATUS = {
+  OPEN: "open",
+  COMING_SOON: "coming-soon",
+  SOLD_OUT: "sold-out",
+  CLOSED: "closed",
+  CANCELLED: "cancelled",
+};
+
+const VENUE_CANCELLATION_NOTICE_URL = "https://tmsb.or.jp/news/IO0nYMF8";
+
 const TMC_VENUES = [
   {
     slug: "tokushima",
@@ -19,9 +29,11 @@ const TMC_VENUES = [
     capacity: 30,
     capacityLabel: "30名",
     fee: "3,600円",
-    status: "open",
+    status: VENUE_STATUS.OPEN,
     statusLabel: "申込受付中",
+    isCampaignEligible: true,
     peatixUrl: "https://tmc-tokushima.peatix.com",
+    noticeUrl: null,
     address: "後日公開",
     venueInfo: [
       "受付開始は開始時刻の15分前を予定しています。",
@@ -62,9 +74,11 @@ const TMC_VENUES = [
     capacity: 60,
     capacityLabel: "60名",
     fee: "3,600円",
-    status: "open",
+    status: VENUE_STATUS.OPEN,
     statusLabel: "申込受付中",
+    isCampaignEligible: true,
     peatixUrl: "https://tmc-hyogo.peatix.com",
+    noticeUrl: null,
     address: "後日公開",
     venueInfo: [
       "受付開始は開始時刻の15分前を予定しています。",
@@ -104,9 +118,11 @@ const TMC_VENUES = [
     capacity: 40,
     capacityLabel: "40名",
     fee: "3,600円",
-    status: "open",
-    statusLabel: "申込受付中",
-    peatixUrl: "https://tmc-kyoto.peatix.com",
+    status: VENUE_STATUS.CANCELLED,
+    statusLabel: "開催中止",
+    isCampaignEligible: false,
+    peatixUrl: null,
+    noticeUrl: VENUE_CANCELLATION_NOTICE_URL,
     address: "後日公開",
     venueInfo: [
       "受付開始は開始時刻の15分前を予定しています。",
@@ -147,9 +163,11 @@ const TMC_VENUES = [
     capacity: 30,
     capacityLabel: "30名",
     fee: "3,600円",
-    status: "open",
-    statusLabel: "申込受付中",
-    peatixUrl: "https://tmc-shiga.peatix.com",
+    status: VENUE_STATUS.CANCELLED,
+    statusLabel: "開催中止",
+    isCampaignEligible: false,
+    peatixUrl: null,
+    noticeUrl: VENUE_CANCELLATION_NOTICE_URL,
     address: "後日公開",
     venueInfo: [
       "受付開始は開始時刻の15分前を予定しています。",
@@ -189,9 +207,11 @@ const TMC_VENUES = [
     capacity: 30,
     capacityLabel: "30名",
     fee: "3,600円",
-    status: "open",
-    statusLabel: "申込受付中",
-    peatixUrl: "https://tmc-nara.peatix.com",
+    status: VENUE_STATUS.CANCELLED,
+    statusLabel: "開催中止",
+    isCampaignEligible: false,
+    peatixUrl: null,
+    noticeUrl: VENUE_CANCELLATION_NOTICE_URL,
     address: "後日公開",
     venueInfo: [
       "受付開始は開始時刻の15分前を予定しています。",
@@ -232,9 +252,11 @@ const TMC_VENUES = [
     capacity: 20,
     capacityLabel: "20名",
     fee: "3,600円",
-    status: "open",
-    statusLabel: "申込受付中",
-    peatixUrl: "https://tmc-wakayama.peatix.com",
+    status: VENUE_STATUS.CANCELLED,
+    statusLabel: "開催中止",
+    isCampaignEligible: false,
+    peatixUrl: null,
+    noticeUrl: VENUE_CANCELLATION_NOTICE_URL,
     address: "後日公開",
     venueInfo: [
       "受付開始は開始時刻の15分前を予定しています。",
@@ -275,9 +297,11 @@ const TMC_VENUES = [
     capacity: 60,
     capacityLabel: "60名",
     fee: "3,600円",
-    status: "open",
-    statusLabel: "申込受付中",
-    peatixUrl: "https://tmc-osaka.peatix.com",
+    status: VENUE_STATUS.CANCELLED,
+    statusLabel: "開催中止",
+    isCampaignEligible: false,
+    peatixUrl: null,
+    noticeUrl: VENUE_CANCELLATION_NOTICE_URL,
     address: "後日公開",
     venueInfo: [
       "受付開始は開始時刻の15分前を予定しています。",
@@ -310,6 +334,23 @@ function getOtherVenuesByDate(currentSlug) {
   return getVenuesByDate().filter((venue) => venue.slug !== currentSlug);
 }
 
+function getActiveVenuesByDate() {
+  return getVenuesByDate().filter((venue) => venue.status === VENUE_STATUS.OPEN);
+}
+
+function getCancelledVenuesByDate() {
+  return getVenuesByDate().filter((venue) => venue.status === VENUE_STATUS.CANCELLED);
+}
+
+function getCampaignVenuesByDate() {
+  return getVenuesByDate().filter(
+    (venue) =>
+      venue.status === VENUE_STATUS.OPEN &&
+      venue.isCampaignEligible === true &&
+      Boolean(venue.peatixUrl),
+  );
+}
+
 const TMC_PROGRAM_STEPS = [
   ["01", "困りごとを見つける", "家や学校、まちの中にある「あれ？」を観察して、発明の種を探します。"],
   ["02", "解決アイデアを考える", "どうすれば変えられそうかを、ノートに描きながら考えます。"],
@@ -318,6 +359,7 @@ const TMC_PROGRAM_STEPS = [
 ];
 
 const TMC_ATTENTION_ITEMS = [
+  ["開催会場の変更について", '徳島会場・兵庫会場のみ開催します。京都・滋賀・奈良・和歌山・大阪会場は開催中止となりました。<a href="https://tmsb.or.jp/news/IO0nYMF8" target="_blank" rel="noopener noreferrer">開催中止について詳しく見る</a>'],
   ["参加に関する注意事項", "各会場は事前申込制です。対象、定員、参加条件などの詳細は各会場の申込ページで案内します。"],
   ["持ち物について", "必要な持ち物は会場ごとに異なります。申込ページまたは会場詳細で案内します。"],
   ["会場での安全について", "スタッフが制作をサポートし、道具の扱い方を説明します。安全のため、スタッフの案内に沿ってご参加ください。"],
@@ -328,6 +370,7 @@ const TMC_ATTENTION_ITEMS = [
 ];
 
 const TMC_FAQ_ITEMS = [
+  ["どの会場で開催されますか？", '徳島会場と兵庫会場で開催します。京都・滋賀・奈良・和歌山・大阪会場は開催中止となりました。<a href="https://tmsb.or.jp/news/IO0nYMF8" target="_blank" rel="noopener noreferrer">詳細は主催者からのお知らせをご確認ください。</a>'],
   ["ものづくりが初めてでも参加できますか？", "はい。初めての方でも参加しやすい内容にし、スタッフが制作をサポートします。"],
   ["対象は何年生ですか？", "小中学生を対象にしています。学年などの詳しい条件は各会場の申込ページで案内します。"],
   ["保護者の付き添いは必要ですか？", "会場ごとに案内します。付き添いの可否や待機場所は各会場の申込ページをご確認ください。"],
@@ -343,4 +386,4 @@ const TMC_FAQ_ITEMS = [
 ];
 
 const TMC_SHARE_TEXT =
-  "関西＋徳島をめぐる小中学生向けものづくり体験イベント「TOMOSHIBI MAKERS CARAVAN」が開催されます。身近な困りごとを解決する発明づくりに挑戦しよう！";
+  "徳島・兵庫で開催する小中学生向けものづくり体験イベント「TOMOSHIBI MAKERS CARAVAN」。身近な困りごとを解決する発明づくりに挑戦しよう！";
